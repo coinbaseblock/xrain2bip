@@ -38,7 +38,8 @@
     DOM.entropyType = DOM.entropyContainer.find(".type");
     DOM.entropyMnemonicLength = DOM.entropyContainer.find(".mnemonic-length");
     DOM.phrase = $(".phrase");
-    DOM.useSpecialEncryptionMode = $(".use-special-encryption-mode");
+    DOM.specialEncryptionMode = $(".special-encryption-mode");
+    DOM.encodingModeActive = $(".encoding-mode-active");
     DOM.seed = $(".seed");
     DOM.rootKey = $(".root-key");
     DOM.litecoinLtubContainer = $(".litecoin-ltub-container");
@@ -115,7 +116,7 @@
         DOM.bip32Client.on("change", bip32ClientChanged);
         DOM.entropy.on("input", delayedEntropyChanged);
         DOM.useAdvanced.on("change", setAdvancedVisibility);
-        DOM.useSpecialEncryptionMode.on("change", specialEncryptionModeChanged);
+        DOM.specialEncryptionMode.on("change", specialEncryptionModeChanged);
         DOM.entropyMnemonicLength.on("change", longpassphraseChanged);
         DOM.more.on("click", showMore);
         DOM.litecoinUseLtub.on("change", litecoinUseLtubChanged);
@@ -222,7 +223,7 @@
         setMnemonicLanguage();
         // Get the mnemonic phrase
         var phrase = DOM.phrase.val();
-        var phraseForSeed = decodeMnemonicIfRequired(phrase);
+        var phraseForSeed = encodeMnemonicIfRequired(phrase);
         var errorText = findPhraseErrors(phraseForSeed);
         if (errorText) {
             showValidationError(errorText);
@@ -237,14 +238,11 @@
     }
 
     function specialEncryptionModeChanged() {
-        if (!DOM.phrase.val()) {
-            return;
-        }
-        if (DOM.useSpecialEncryptionMode.prop("checked")) {
-            DOM.phrase.val(encodeSpecialMnemonic(DOM.phrase.val()));
-        }
-        else {
-            DOM.phrase.val(decodeSpecialMnemonic(DOM.phrase.val()));
+        var mode = DOM.specialEncryptionMode.val();
+        if (mode === "none") {
+            DOM.encodingModeActive.hide();
+        } else {
+            DOM.encodingModeActive.show();
         }
         phraseChanged();
     }
@@ -1210,25 +1208,57 @@
     }
 
     function encodeMnemonicIfRequired(phrase) {
-        if (!DOM.useSpecialEncryptionMode.prop("checked")) {
+        var mode = DOM.specialEncryptionMode.val();
+        if (mode === "none") {
             return phrase;
         }
-        return encodeSpecialMnemonic(phrase);
+        return applyEncodingMode(phrase, mode);
     }
 
-    function decodeMnemonicIfRequired(phrase) {
-        if (!DOM.useSpecialEncryptionMode.prop("checked")) {
-            return phrase;
+    function applyEncodingMode(phrase, mode) {
+        if (mode === "word-shift") {
+            return shiftMnemonicWords(phrase, 8);
         }
-        return decodeSpecialMnemonic(phrase);
-    }
-
-    function encodeSpecialMnemonic(phrase) {
-        return shiftMnemonicWords(phrase, 8);
-    }
-
-    function decodeSpecialMnemonic(phrase) {
-        return shiftMnemonicWords(phrase, -8);
+        if (mode === "sha256") {
+            var words = phraseToWordArray(phrase);
+            var encoded = words.map(function(w) {
+                var bits = sjcl.hash.sha256.hash(w);
+                return sjcl.codec.hex.fromBits(bits).slice(0, 8);
+            });
+            return encoded.join(" ");
+        }
+        if (mode === "sha512") {
+            var words = phraseToWordArray(phrase);
+            var encoded = words.map(function(w) {
+                var bits = sjcl.hash.sha512.hash(w);
+                return sjcl.codec.hex.fromBits(bits).slice(0, 8);
+            });
+            return encoded.join(" ");
+        }
+        if (mode === "double-sha256") {
+            var words = phraseToWordArray(phrase);
+            var encoded = words.map(function(w) {
+                var bits1 = sjcl.hash.sha256.hash(w);
+                var bits2 = sjcl.hash.sha256.hash(sjcl.codec.hex.fromBits(bits1));
+                return sjcl.codec.hex.fromBits(bits2).slice(0, 8);
+            });
+            return encoded.join(" ");
+        }
+        if (mode === "base64") {
+            return btoa(unescape(encodeURIComponent(phrase)));
+        }
+        if (mode === "hex") {
+            var bytes = [];
+            for (var i = 0; i < phrase.length; i++) {
+                bytes.push(phrase.charCodeAt(i).toString(16).padStart(2, "0"));
+            }
+            return bytes.join("");
+        }
+        if (mode === "reverse") {
+            var words = phraseToWordArray(phrase);
+            return wordArrayToPhrase(words.slice().reverse());
+        }
+        return phrase;
     }
 
     function shiftMnemonicWords(phrase, shift) {
