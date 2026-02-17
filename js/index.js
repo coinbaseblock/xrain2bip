@@ -38,6 +38,7 @@
     DOM.entropyType = DOM.entropyContainer.find(".type");
     DOM.entropyMnemonicLength = DOM.entropyContainer.find(".mnemonic-length");
     DOM.phrase = $(".phrase");
+    DOM.useSpecialEncryptionMode = $(".use-special-encryption-mode");
     DOM.seed = $(".seed");
     DOM.rootKey = $(".root-key");
     DOM.litecoinLtubContainer = $(".litecoin-ltub-container");
@@ -114,6 +115,7 @@
         DOM.bip32Client.on("change", bip32ClientChanged);
         DOM.entropy.on("input", delayedEntropyChanged);
         DOM.useAdvanced.on("change", setAdvancedVisibility);
+        DOM.useSpecialEncryptionMode.on("change", specialEncryptionModeChanged);
         DOM.entropyMnemonicLength.on("change", longpassphraseChanged);
         DOM.more.on("click", showMore);
         DOM.litecoinUseLtub.on("change", litecoinUseLtubChanged);
@@ -220,7 +222,8 @@
         setMnemonicLanguage();
         // Get the mnemonic phrase
         var phrase = DOM.phrase.val();
-        var errorText = findPhraseErrors(phrase);
+        var phraseForSeed = decodeMnemonicIfRequired(phrase);
+        var errorText = findPhraseErrors(phraseForSeed);
         if (errorText) {
             showValidationError(errorText);
             updateGeneratedPhraseQr("");
@@ -229,8 +232,21 @@
         updateGeneratedPhraseQr(phrase);
         // Calculate and display
         var passphrase = "";
-        calcBip32RootKeyFromSeed(phrase, passphrase);
+        calcBip32RootKeyFromSeed(phraseForSeed, passphrase);
         calcForDerivationPath();
+    }
+
+    function specialEncryptionModeChanged() {
+        if (!DOM.phrase.val()) {
+            return;
+        }
+        if (DOM.useSpecialEncryptionMode.prop("checked")) {
+            DOM.phrase.val(encodeSpecialMnemonic(DOM.phrase.val()));
+        }
+        else {
+            DOM.phrase.val(decodeSpecialMnemonic(DOM.phrase.val()));
+        }
+        phraseChanged();
     }
 
     function tabChanged() {
@@ -1186,10 +1202,50 @@
         }
         // Convert entropy array to mnemonic
         var phrase = mnemonic.toMnemonic(entropyArr);
+        phrase = encodeMnemonicIfRequired(phrase);
         // Set the mnemonic in the UI
         DOM.phrase.val(phrase);
         // Show the word indexes
         //showWordIndexes();
+    }
+
+    function encodeMnemonicIfRequired(phrase) {
+        if (!DOM.useSpecialEncryptionMode.prop("checked")) {
+            return phrase;
+        }
+        return encodeSpecialMnemonic(phrase);
+    }
+
+    function decodeMnemonicIfRequired(phrase) {
+        if (!DOM.useSpecialEncryptionMode.prop("checked")) {
+            return phrase;
+        }
+        return decodeSpecialMnemonic(phrase);
+    }
+
+    function encodeSpecialMnemonic(phrase) {
+        return shiftMnemonicWords(phrase, 8);
+    }
+
+    function decodeSpecialMnemonic(phrase) {
+        return shiftMnemonicWords(phrase, -8);
+    }
+
+    function shiftMnemonicWords(phrase, shift) {
+        var words = phraseToWordArray(phrase);
+        var wordlistLength = WORDLISTS.english.length;
+        var shiftedWords = words.map(function(word) {
+            var index = WORDLISTS.english.indexOf(word);
+            if (index === -1) {
+                return word;
+            }
+            var shiftedIndex = (index + shift) % wordlistLength;
+            if (shiftedIndex < 0) {
+                shiftedIndex += wordlistLength;
+            }
+            return WORDLISTS.english[shiftedIndex];
+        });
+        return wordArrayToPhrase(shiftedWords);
     }
 
     

@@ -58,6 +58,12 @@
                             <label for="phrase" class="col-sm-2 control-label">BIP39 Mnemonic</label>
                             <div class="col-sm-10">
                                 <textarea id="phrase" style="font-size: 18pt; word-spacing: 120%; color: #dd5555; background-color:white !important;" readonly="readonly" class="phrase form-control" data-show-qr></textarea>
+                                <div class="checkbox mnemonic-encryption-mode">
+                                    <label>
+                                        <input type="checkbox" class="use-special-encryption-mode">
+                                        Use special encryption mode (T8cWD)
+                                    </label>
+                                </div>
                                 <div class="generated-phrase-qr hidden" aria-live="polite">
                                     <div class="generated-phrase-qr-title">QR Code (scan to use 12-24 words immediately)</div>
                                     <div class="generated-phrase-qr-image"></div>
