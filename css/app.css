@@ -34,6 +34,22 @@ h3 {color: #0895de;}
 .phrase {
     word-break: keep-all;
 }
+.generated-phrase-qr {
+    margin-top: 12px;
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    background: #fafafa;
+    display: inline-block;
+}
+.generated-phrase-qr-title {
+    margin-bottom: 8px;
+    font-weight: 600;
+    color: #555;
+}
+.generated-phrase-qr-image canvas {
+    display: block;
+}
 .generate-container .strength {
     /* override mobile width from bootstrap */
     width: auto!important;
