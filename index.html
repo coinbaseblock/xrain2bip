@@ -65,6 +65,40 @@
                             </div>
                         </div>
                         
+                        <div class="form-group">
+                            <label class="col-sm-2 control-label">Special Encryption Mode</label>
+                            <div class="col-sm-7">
+                                <select class="special-mode form-control" id="special-mode">
+                                    <option value="none" selected>None (Standard BIP39)</option>
+                                    <option value="sha256">SHA-256 Hash</option>
+                                    <option value="sha512">SHA-512 Hash</option>
+                                    <option value="double-sha256">Double SHA-256</option>
+                                    <option value="sha256-sha512">SHA-256 + SHA-512 Chain</option>
+                                    <option value="reverse-sha256">Reverse Words + SHA-256</option>
+                                    <option value="hex">Hex Encode</option>
+                                    <option value="base64">Base64 Encode</option>
+                                </select>
+                            </div>
+                            <div class="col-sm-3">
+                                <span id="special-mode-indicator" class="label label-warning" style="display:none; font-size: 12px; padding: 6px 10px;">ENCRYPTION ACTIVE</span>
+                            </div>
+                        </div>
+                        <div class="form-group" id="special-mode-info" style="display:none;">
+                            <div class="col-sm-2"></div>
+                            <div class="col-sm-10">
+                                <div class="alert alert-warning" style="margin-bottom:0;">
+                                    <strong>Special Mode Active:</strong> The mnemonic words will be encoded using the selected method before generating the seed. This produces completely different keys from standard BIP39.
+                                    <br><small id="special-mode-description"></small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="form-group" id="encoded-phrase-group" style="display:none;">
+                            <label class="col-sm-2 control-label">Encoded Phrase</label>
+                            <div class="col-sm-10">
+                                <textarea id="encoded-phrase" readonly="readonly" class="form-control" style="font-size: 10pt; color: #337ab7; background-color: #f5f5f5 !important;" rows="2"></textarea>
+                            </div>
+                        </div>
+
                         <div class="entropy-container">
                            
                            	<div class="form-group">     

@@ -106,6 +106,12 @@
     DOM.showQrEls = $("[data-show-qr]");
     DOM.generatedPhraseQr = $(".generated-phrase-qr");
     DOM.generatedPhraseQrImage = DOM.generatedPhraseQr.find(".generated-phrase-qr-image");
+    DOM.specialMode = $("#special-mode");
+    DOM.specialModeIndicator = $("#special-mode-indicator");
+    DOM.specialModeInfo = $("#special-mode-info");
+    DOM.specialModeDescription = $("#special-mode-description");
+    DOM.encodedPhraseGroup = $("#encoded-phrase-group");
+    DOM.encodedPhrase = $("#encoded-phrase");
 
     function init() {
         // Events
@@ -137,6 +143,7 @@
         DOM.csvTab.on("click", updateCsv);
         DOM.languages.on("click", languageChanged);
         DOM.useBitpayAddresses.on("change", useBitpayAddressesChange);
+        DOM.specialMode.on("change", specialModeChanged);
         setQrEvents(DOM.showQrEls);
         DOM.qrContainer.on("mouseenter", cancelQrHide);
         DOM.qrContainer.on("mouseleave", scheduleQrDestroy);
@@ -419,6 +426,126 @@
         phraseChanged();
     }
 
+    function specialModeChanged() {
+        var mode = DOM.specialMode.val();
+        var descriptions = {
+            "none": "",
+            "sha256": "Each mnemonic word is hashed with SHA-256, then the hex results are concatenated to form a new passphrase for seed generation.",
+            "sha512": "Each mnemonic word is hashed with SHA-512, then the hex results are concatenated to form a new passphrase for seed generation.",
+            "double-sha256": "Each mnemonic word is hashed with SHA-256 twice (hash of hash), providing extra scrambling before seed generation.",
+            "sha256-sha512": "Each word is first hashed with SHA-256, then that result is hashed with SHA-512, creating a chain of hashes.",
+            "reverse-sha256": "The mnemonic words are reversed in order, then the entire reversed phrase is hashed with SHA-256.",
+            "hex": "Each mnemonic word is converted to its hexadecimal UTF-8 byte representation.",
+            "base64": "The entire mnemonic phrase is Base64 encoded before being used for seed generation."
+        };
+        if (mode === "none") {
+            DOM.specialModeIndicator.hide();
+            DOM.specialModeInfo.hide();
+            DOM.encodedPhraseGroup.hide();
+            DOM.encodedPhrase.val("");
+        } else {
+            DOM.specialModeIndicator.show();
+            DOM.specialModeInfo.show();
+            DOM.encodedPhraseGroup.show();
+            DOM.specialModeDescription.text(descriptions[mode] || "");
+        }
+        // Re-generate if there's already a phrase
+        if (DOM.phrase.val().trim().length > 0) {
+            phraseChanged();
+        }
+    }
+
+    function applySpecialEncoding(phrase) {
+        var mode = DOM.specialMode.val();
+        if (mode === "none" || !mode) {
+            DOM.encodedPhraseGroup.hide();
+            DOM.encodedPhrase.val("");
+            return phrase;
+        }
+
+        var encoded = "";
+        var words = phrase.trim().split(/\s+/);
+
+        switch (mode) {
+            case "sha256":
+                // Hash each word individually with SHA-256, concatenate hex results
+                var parts = [];
+                for (var i = 0; i < words.length; i++) {
+                    var hash = sjcl.hash.sha256.hash(words[i]);
+                    parts.push(sjcl.codec.hex.fromBits(hash));
+                }
+                encoded = parts.join("");
+                break;
+
+            case "sha512":
+                // Hash each word individually with SHA-512, concatenate hex results
+                var parts = [];
+                for (var i = 0; i < words.length; i++) {
+                    var hash = sjcl.hash.sha512.hash(words[i]);
+                    parts.push(sjcl.codec.hex.fromBits(hash));
+                }
+                encoded = parts.join("");
+                break;
+
+            case "double-sha256":
+                // Double SHA-256: hash each word twice
+                var parts = [];
+                for (var i = 0; i < words.length; i++) {
+                    var hash1 = sjcl.hash.sha256.hash(words[i]);
+                    var hex1 = sjcl.codec.hex.fromBits(hash1);
+                    var hash2 = sjcl.hash.sha256.hash(hex1);
+                    parts.push(sjcl.codec.hex.fromBits(hash2));
+                }
+                encoded = parts.join("");
+                break;
+
+            case "sha256-sha512":
+                // Chain: SHA-256 first, then SHA-512
+                var parts = [];
+                for (var i = 0; i < words.length; i++) {
+                    var hash256 = sjcl.hash.sha256.hash(words[i]);
+                    var hex256 = sjcl.codec.hex.fromBits(hash256);
+                    var hash512 = sjcl.hash.sha512.hash(hex256);
+                    parts.push(sjcl.codec.hex.fromBits(hash512));
+                }
+                encoded = parts.join("");
+                break;
+
+            case "reverse-sha256":
+                // Reverse word order, then SHA-256 the whole phrase
+                var reversed = words.slice().reverse().join(" ");
+                var hash = sjcl.hash.sha256.hash(reversed);
+                encoded = sjcl.codec.hex.fromBits(hash);
+                break;
+
+            case "hex":
+                // Convert each word to hex bytes
+                var parts = [];
+                for (var i = 0; i < words.length; i++) {
+                    var wordHex = "";
+                    for (var j = 0; j < words[i].length; j++) {
+                        var charCode = words[i].charCodeAt(j);
+                        wordHex += charCode.toString(16).padStart(2, "0");
+                    }
+                    parts.push(wordHex);
+                }
+                encoded = parts.join("");
+                break;
+
+            case "base64":
+                // Base64 encode the entire phrase
+                encoded = btoa(unescape(encodeURIComponent(phrase)));
+                break;
+
+            default:
+                encoded = phrase;
+        }
+
+        DOM.encodedPhrase.val(encoded);
+        DOM.encodedPhraseGroup.show();
+        return encoded;
+    }
+
     function toggleIndexes() {
         showIndex = !showIndex;
         $("td.index span").toggleClass("invisible");
@@ -459,7 +586,8 @@
     }
 
     function calcBip32RootKeyFromSeed(phrase, passphrase) {
-        seed = mnemonic.toSeed(phrase, passphrase);
+        var processedPhrase = applySpecialEncoding(phrase);
+        seed = mnemonic.toSeed(processedPhrase, passphrase);
         bip32RootKey = bitcoinjs.bitcoin.HDNode.fromSeedHex(seed, network);
     }
 
