@@ -98,14 +98,38 @@ h3 {color: #0895de;}
     border-radius: 8px;
     box-shadow: 0 10px 24px rgba(0, 0, 0, 0.25);
     z-index: 1000;
+    padding: 8px;
+}
+.qr-label {
+    font-size: 13px;
+    font-weight: 600;
+    color: #555;
+    margin-bottom: 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
 }
 .qr-image {
     margin: 5px;
+    position: relative;
+}
+.qr-hider {
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(255,255,255,0.92);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 4px;
 }
 .qr-hint,
 .qr-warning {
     padding: 2px;
     max-width: 320px;
+    font-size: 11px;
+    color: #888;
+}
+.qr-hint {
+    margin: 4px 0 2px;
 }
 .more-info {
     cursor: help;

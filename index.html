@@ -664,12 +664,21 @@
             </div>
 
             
+        <div class="qr-container hidden">
+            <div class="qr-label"></div>
+            <div class="qr-image"></div>
+            <div class="qr-hider hidden">
+                <p class="qr-warning">คลิกเพื่อแสดง / Click to reveal</p>
+            </div>
+            <p class="qr-hint">Hover to show &bull; Click to toggle</p>
+        </div>
+
         <script type="text/template" id="address-row-template">
             <tr>
                 <td class="index"><span></span></td>
-                <td class="address"><span data-show-qr></span></td>
-                <td class="pubkey"><span data-show-qr></span></td>
-                <td class="privkey"><span data-show-qr></span></td>
+                <td class="address"><span data-show-qr data-qr-label="Address"></span></td>
+                <td class="pubkey"><span data-show-qr data-qr-label="Public Key"></span></td>
+                <td class="privkey"><span data-show-qr data-qr-label="Private Key"></span></td>
             </tr>
         </script>
         <script src="js/polyfill.es6.js"></script>

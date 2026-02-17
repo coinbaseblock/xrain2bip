@@ -103,6 +103,7 @@
     DOM.qrHider = DOM.qrContainer.find(".qr-hider");
     DOM.qrImage = DOM.qrContainer.find(".qr-image");
     DOM.qrHint = DOM.qrContainer.find(".qr-hint");
+    DOM.qrLabel = DOM.qrContainer.find(".qr-label");
     DOM.showQrEls = $("[data-show-qr]");
     DOM.generatedPhraseQr = $(".generated-phrase-qr");
     DOM.generatedPhraseQrImage = DOM.generatedPhraseQr.find(".generated-phrase-qr-image");
@@ -1276,6 +1277,13 @@
                 ecLevel: 'H',
             });
             DOM.qrImage.append(qrEl);
+            var label = $(target).data("qr-label") || "";
+            DOM.qrLabel.text(label);
+            if (label) {
+                DOM.qrLabel.removeClass("hidden");
+            } else {
+                DOM.qrLabel.addClass("hidden");
+            }
             positionQrNearTarget(target);
             if (!showQr) {
                 DOM.qrHider.addClass("hidden");
