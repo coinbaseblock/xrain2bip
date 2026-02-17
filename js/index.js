@@ -102,6 +102,8 @@
     DOM.qrImage = DOM.qrContainer.find(".qr-image");
     DOM.qrHint = DOM.qrContainer.find(".qr-hint");
     DOM.showQrEls = $("[data-show-qr]");
+    DOM.generatedPhraseQr = $(".generated-phrase-qr");
+    DOM.generatedPhraseQrImage = DOM.generatedPhraseQr.find(".generated-phrase-qr-image");
 
     function init() {
         // Events
@@ -217,8 +219,10 @@
         var errorText = findPhraseErrors(phrase);
         if (errorText) {
             showValidationError(errorText);
+            updateGeneratedPhraseQr("");
             return;
         }
+        updateGeneratedPhraseQr(phrase);
         // Calculate and display
         var passphrase = "";
         calcBip32RootKeyFromSeed(phrase, passphrase);
@@ -285,6 +289,7 @@
             DOM.phrase.val("");
             DOM.entropy.val("");
             DOM.seed.val("");
+            updateGeneratedPhraseQr("");
             phraseChanged();
             return;
         }
@@ -341,8 +346,10 @@
         var errorText = validateRootKey(rootKeyBase58);
         if (errorText) {
             showValidationError(errorText);
+            updateGeneratedPhraseQr("");
             return;
         }
+        updateGeneratedPhraseQr("");
         // Calculate and display
         calcBip32RootKeyFromBase58(rootKeyBase58);
         calcForDerivationPath();
@@ -431,6 +438,22 @@
     // Private methods
 
    
+    function updateGeneratedPhraseQr(phrase) {
+        DOM.generatedPhraseQrImage.empty();
+        if (!phrase) {
+            DOM.generatedPhraseQr.addClass("hidden");
+            return;
+        }
+        var qrEl = kjua({
+            text: phrase,
+            render: "canvas",
+            size: 240,
+            ecLevel: 'H',
+        });
+        DOM.generatedPhraseQrImage.append(qrEl);
+        DOM.generatedPhraseQr.removeClass("hidden");
+    }
+
     function calcBip32RootKeyFromSeed(phrase, passphrase) {
         seed = mnemonic.toSeed(phrase, passphrase);
         bip32RootKey = bitcoinjs.bitcoin.HDNode.fromSeedHex(seed, network);
@@ -868,6 +891,7 @@
     function clearDisplay() {
         clearAddressesList();
         clearKeys();
+        updateGeneratedPhraseQr("");
         hideValidationError();
     }
 
