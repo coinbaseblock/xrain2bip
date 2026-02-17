@@ -236,16 +236,34 @@
         calcForDerivationPath();
     }
 
+    var previousEncryptionMode = "none";
+
+    function getShiftForMode(mode) {
+        if (mode === "t8cwd")   return 8;
+        if (mode === "shift16") return 16;
+        if (mode === "shift24") return 24;
+        return 0;
+    }
+
     function specialEncryptionModeChanged() {
+        var newMode = DOM.useSpecialEncryptionMode.val();
         if (!DOM.phrase.val()) {
+            previousEncryptionMode = newMode;
             return;
         }
-        if (DOM.useSpecialEncryptionMode.prop("checked")) {
-            DOM.phrase.val(encodeSpecialMnemonic(DOM.phrase.val()));
+        var currentPhrase = DOM.phrase.val();
+        // Undo previous encoding
+        var prevShift = getShiftForMode(previousEncryptionMode);
+        if (prevShift !== 0) {
+            currentPhrase = shiftMnemonicWords(currentPhrase, -prevShift);
         }
-        else {
-            DOM.phrase.val(decodeSpecialMnemonic(DOM.phrase.val()));
+        // Apply new encoding
+        var newShift = getShiftForMode(newMode);
+        if (newShift !== 0) {
+            currentPhrase = shiftMnemonicWords(currentPhrase, newShift);
         }
+        DOM.phrase.val(currentPhrase);
+        previousEncryptionMode = newMode;
         phraseChanged();
     }
 
@@ -1205,22 +1223,23 @@
         phrase = encodeMnemonicIfRequired(phrase);
         // Set the mnemonic in the UI
         DOM.phrase.val(phrase);
+        previousEncryptionMode = DOM.useSpecialEncryptionMode.val();
         // Show the word indexes
         //showWordIndexes();
     }
 
     function encodeMnemonicIfRequired(phrase) {
-        if (!DOM.useSpecialEncryptionMode.prop("checked")) {
-            return phrase;
-        }
-        return encodeSpecialMnemonic(phrase);
+        var mode = DOM.useSpecialEncryptionMode.val();
+        var shift = getShiftForMode(mode);
+        if (shift === 0) return phrase;
+        return shiftMnemonicWords(phrase, shift);
     }
 
     function decodeMnemonicIfRequired(phrase) {
-        if (!DOM.useSpecialEncryptionMode.prop("checked")) {
-            return phrase;
-        }
-        return decodeSpecialMnemonic(phrase);
+        var mode = DOM.useSpecialEncryptionMode.val();
+        var shift = getShiftForMode(mode);
+        if (shift === 0) return phrase;
+        return shiftMnemonicWords(phrase, -shift);
     }
 
     function encodeSpecialMnemonic(phrase) {
