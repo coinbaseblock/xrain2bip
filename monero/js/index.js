@@ -178,6 +178,7 @@
         setQrEvents(DOM.showQrEls);
         DOM.qrContainer.on("mouseenter", cancelQrHide);
         DOM.qrContainer.on("mouseleave", scheduleQrDestroy);
+        DOM.qrContainer.on("click", toggleQr);
         disableForms();
         hidePending();
         hideValidationError();
@@ -1588,7 +1589,6 @@
         els.on("mouseleave", scheduleQrDestroy);
         els.on("touchstart", createQr);
         els.on("click", createQr);
-        els.on("click", toggleQr);
     }
 
     function createQr(e) {
