@@ -76,6 +76,9 @@ body {
     text-align: center;
     background-color: #FFF;
     border: 1px solid #CCC;
+    border-radius: 8px;
+    box-shadow: 0 10px 24px rgba(0, 0, 0, 0.25);
+    z-index: 1000;
 }
 .qr-image {
     margin: 5px;

@@ -14,6 +14,8 @@
     var showPubKey = true;
     var showPrivKey = true;
     var showQr = false;
+    var qrHideTimeoutEvent = null;
+    var QR_HIDE_DELAY_MS = 1200;
     var litecoinUseLtub = true;
 
     var entropyChangeTimeoutEvent = null;
@@ -174,6 +176,8 @@
         DOM.languages.on("click", languageChanged);
         DOM.bitcoinCashAddressType.on("change", bitcoinCashAddressTypeChange);
         setQrEvents(DOM.showQrEls);
+        DOM.qrContainer.on("mouseenter", cancelQrHide);
+        DOM.qrContainer.on("mouseleave", scheduleQrDestroy);
         disableForms();
         hidePending();
         hideValidationError();
@@ -1581,13 +1585,18 @@
 
     function setQrEvents(els) {
         els.on("mouseenter", createQr);
-        els.on("mouseleave", destroyQr);
+        els.on("mouseleave", scheduleQrDestroy);
+        els.on("touchstart", createQr);
+        els.on("click", createQr);
         els.on("click", toggleQr);
     }
 
     function createQr(e) {
-        var content = e.target.textContent || e.target.value;
+        cancelQrHide();
+        var target = e.currentTarget || e.target;
+        var content = getQrContent(target);
         if (content) {
+            DOM.qrImage.text("");
             var qrEl = kjua({
                 text: content,
                 render: "canvas",
@@ -1595,6 +1604,7 @@
                 ecLevel: 'H',
             });
             DOM.qrImage.append(qrEl);
+            positionQrNearTarget(target);
             if (!showQr) {
                 DOM.qrHider.addClass("hidden");
             }
@@ -1605,9 +1615,55 @@
         }
     }
 
+    function getQrContent(target) {
+        var textContent = $(target).text();
+        if (textContent && textContent.trim()) {
+            return textContent.trim();
+        }
+        var valueContent = $(target).val();
+        if (valueContent && valueContent.trim()) {
+            return valueContent.trim();
+        }
+        return "";
+    }
+
+    function scheduleQrDestroy() {
+        cancelQrHide();
+        qrHideTimeoutEvent = setTimeout(destroyQr, QR_HIDE_DELAY_MS);
+    }
+
+    function cancelQrHide() {
+        if (qrHideTimeoutEvent != null) {
+            clearTimeout(qrHideTimeoutEvent);
+            qrHideTimeoutEvent = null;
+        }
+    }
+
     function destroyQr() {
+        cancelQrHide();
         DOM.qrImage.text("");
         DOM.qrContainer.addClass("hidden");
+    }
+
+    function positionQrNearTarget(target) {
+        var rect = target.getBoundingClientRect();
+        var qrWidth = DOM.qrContainer.outerWidth() || 330;
+        var qrHeight = DOM.qrContainer.outerHeight() || 350;
+        var left = rect.right + 12;
+        var top = rect.top;
+        if (left + qrWidth > window.innerWidth - 8) {
+            left = rect.left - qrWidth - 12;
+        }
+        if (left < 8) {
+            left = 8;
+        }
+        if (top + qrHeight > window.innerHeight - 8) {
+            top = window.innerHeight - qrHeight - 8;
+        }
+        if (top < 8) {
+            top = 8;
+        }
+        DOM.qrContainer.css({ top: top + "px", left: left + "px", right: "auto" });
     }
 
     function toggleQr() {
