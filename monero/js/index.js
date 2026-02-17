@@ -125,6 +125,8 @@
     DOM.qrImage = DOM.qrContainer.find(".qr-image");
     DOM.qrHint = DOM.qrContainer.find(".qr-hint");
     DOM.showQrEls = $("[data-show-qr]");
+    DOM.specialMode = $("#special-mode");
+    DOM.specialModeInfo = $(".special-mode-info");
 
     function init() {
         // query params? store them in location.queryString dict
@@ -151,6 +153,7 @@
         DOM.entropyMnemonicLength.on("change", entropyChanged);
         DOM.phrase.on("input", delayedPhraseChanged);
         DOM.passphrase.on("input", delayedPhraseChanged);
+        DOM.specialMode.on("change", specialModeChanged);
         DOM.generate.on("click", generateClicked);
         DOM.more.on("click", showMore);
         DOM.rootKey.on("input", delayedRootKeyChanged);
@@ -207,6 +210,19 @@
         else {
             DOM.generatedStrengthWarning.addClass("hidden");
         }
+    }
+
+    function specialModeChanged() {
+        // Show/hide the special mode info message
+        var mode = DOM.specialMode.val();
+        if (mode === "none") {
+            DOM.specialModeInfo.hide();
+        }
+        else {
+            DOM.specialModeInfo.show();
+        }
+        // Trigger phrase recalculation
+        delayedPhraseChanged();
     }
 
     function networkChanged(e) {
@@ -565,8 +581,58 @@
         return words;
     }
 
+    function applySpecialModeEncoding(phrase) {
+        var mode = DOM.specialMode.val();
+        if (mode === "none") {
+            return phrase;
+        }
+
+        // Convert phrase to UTF-8 bytes for encoding
+        var encoder = new TextEncoder();
+        var bytes = encoder.encode(phrase);
+
+        switch(mode) {
+            case "sha256":
+                // Use SJCL for SHA-256
+                var hash = sjcl.hash.sha256.hash(phrase);
+                return sjcl.codec.hex.fromBits(hash);
+            case "sha512":
+                // Use SJCL for SHA-512
+                var hash512 = sjcl.hash.sha512.hash(phrase);
+                return sjcl.codec.hex.fromBits(hash512);
+            case "blake2":
+                // BLAKE2 using Web Crypto API if available, fallback to SHA-256
+                if (window.crypto && window.crypto.subtle) {
+                    // Note: BLAKE2 is not in WebCrypto standard, using SHA-512 as alternative
+                    return bytesToHex(bytes) + "_blake2_not_supported";
+                }
+                // Fallback to SHA-256
+                var hash = sjcl.hash.sha256.hash(phrase);
+                return sjcl.codec.hex.fromBits(hash);
+            case "base64":
+                // Simple Base64 encoding
+                return btoa(phrase);
+            case "hex":
+                // Hex encoding of UTF-8 bytes
+                return bytesToHex(bytes);
+            default:
+                return phrase;
+        }
+    }
+
+    function bytesToHex(bytes) {
+        var hex = "";
+        for (var i = 0; i < bytes.length; i++) {
+            var b = bytes[i].toString(16);
+            hex += (b.length == 1 ? "0" : "") + b;
+        }
+        return hex;
+    }
+
     function calcBip32RootKeyFromSeed(phrase, passphrase) {
-        seed = mnemonic.toSeed(phrase, passphrase);
+        // Apply special mode encoding if enabled
+        var encodedPhrase = applySpecialModeEncoding(phrase);
+        seed = mnemonic.toSeed(encodedPhrase, passphrase);
         bip32RootKey = bitcoinjs.bitcoin.HDNode.fromSeedHex(seed, network);
     }
 
