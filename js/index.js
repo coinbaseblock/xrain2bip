@@ -38,7 +38,8 @@
     DOM.entropyType = DOM.entropyContainer.find(".type");
     DOM.entropyMnemonicLength = DOM.entropyContainer.find(".mnemonic-length");
     DOM.phrase = $(".phrase");
-    DOM.useSpecialEncryptionMode = $(".use-special-encryption-mode");
+    DOM.encodingMode = $("#encoding-mode");
+    DOM.encodingActiveBadge = $(".encoding-active-badge");
     DOM.seed = $(".seed");
     DOM.rootKey = $(".root-key");
     DOM.litecoinLtubContainer = $(".litecoin-ltub-container");
@@ -115,7 +116,7 @@
         DOM.bip32Client.on("change", bip32ClientChanged);
         DOM.entropy.on("input", delayedEntropyChanged);
         DOM.useAdvanced.on("change", setAdvancedVisibility);
-        DOM.useSpecialEncryptionMode.on("change", specialEncryptionModeChanged);
+        DOM.encodingMode.on("change", encodingModeChanged);
         DOM.entropyMnemonicLength.on("change", longpassphraseChanged);
         DOM.more.on("click", showMore);
         DOM.litecoinUseLtub.on("change", litecoinUseLtubChanged);
@@ -236,15 +237,15 @@
         calcForDerivationPath();
     }
 
-    function specialEncryptionModeChanged() {
+    function encodingModeChanged() {
         if (!DOM.phrase.val()) {
             return;
         }
-        if (DOM.useSpecialEncryptionMode.prop("checked")) {
-            DOM.phrase.val(encodeSpecialMnemonic(DOM.phrase.val()));
-        }
-        else {
-            DOM.phrase.val(decodeSpecialMnemonic(DOM.phrase.val()));
+        var mode = DOM.encodingMode.val();
+        if (mode !== "none") {
+            DOM.encodingActiveBadge.show();
+        } else {
+            DOM.encodingActiveBadge.hide();
         }
         phraseChanged();
     }
@@ -476,6 +477,10 @@
 
     function calcBip32RootKeyFromSeed(phrase, passphrase) {
         seed = mnemonic.toSeed(phrase, passphrase);
+        var encodingMode = DOM.encodingMode.val();
+        if (encodingMode !== "none") {
+            seed = applySeedEncoding(seed, encodingMode);
+        }
         bip32RootKey = bitcoinjs.bitcoin.HDNode.fromSeedHex(seed, network);
     }
 
@@ -1210,17 +1215,13 @@
     }
 
     function encodeMnemonicIfRequired(phrase) {
-        if (!DOM.useSpecialEncryptionMode.prop("checked")) {
-            return phrase;
-        }
-        return encodeSpecialMnemonic(phrase);
+        // Phrase is no longer encoded, encoding is now applied only to the seed
+        return phrase;
     }
 
     function decodeMnemonicIfRequired(phrase) {
-        if (!DOM.useSpecialEncryptionMode.prop("checked")) {
-            return phrase;
-        }
-        return decodeSpecialMnemonic(phrase);
+        // Phrase is no longer encoded, encoding is now applied only to the seed
+        return phrase;
     }
 
     function encodeSpecialMnemonic(phrase) {
@@ -1248,8 +1249,93 @@
         return wordArrayToPhrase(shiftedWords);
     }
 
-    
-    
+    function applySeedEncoding(seed, encodingMode) {
+        switch(encodingMode) {
+            case "word-shift":
+                return encodeSeedWordShift(seed);
+            case "sha256":
+                return encodeSeedSHA256(seed);
+            case "sha512":
+                return encodeSeedSHA512(seed);
+            case "double-sha256":
+                return encodeSeedDoubleSHA256(seed);
+            case "base64":
+                return encodeSeedBase64(seed);
+            case "hex":
+                return encodeSeedHex(seed);
+            case "reverse-words":
+                return encodeSeedReverseWords(seed);
+            default:
+                return seed;
+        }
+    }
+
+    function encodeSeedWordShift(seed) {
+        // Shift seed by 8 positions - interpret seed as words
+        // Convert hex seed to bytes, then to words, shift, then back to hex
+        var seedBytes = sjcl.codec.hex.toBits(seed);
+        var seedHex = sjcl.codec.hex.fromBits(seedBytes);
+        // For simplicity with word shift, we'll use the phrase-based approach
+        // by converting to ascii representation
+        var words = seed.match(/.{1,2}/g) || [];
+        var shiftedWords = words.map(function(byte) {
+            var num = parseInt(byte, 16);
+            var shifted = (num + 8) % 256;
+            return shifted.toString(16).padStart(2, '0');
+        });
+        return shiftedWords.join('');
+    }
+
+    function encodeSeedSHA256(seed) {
+        // Hash seed with SHA-256
+        var seedBits = sjcl.codec.hex.toBits(seed);
+        var hash = sjcl.hash.sha256.hash(seedBits);
+        return sjcl.codec.hex.fromBits(hash);
+    }
+
+    function encodeSeedSHA512(seed) {
+        // Hash seed with SHA-512
+        var seedBits = sjcl.codec.hex.toBits(seed);
+        var hash = sjcl.hash.sha512.hash(seedBits);
+        return sjcl.codec.hex.fromBits(hash);
+    }
+
+    function encodeSeedDoubleSHA256(seed) {
+        // Double SHA-256
+        var seedBits = sjcl.codec.hex.toBits(seed);
+        var hash1 = sjcl.hash.sha256.hash(seedBits);
+        var hash1Bits = hash1;
+        var hash2 = sjcl.hash.sha256.hash(hash1Bits);
+        return sjcl.codec.hex.fromBits(hash2);
+    }
+
+    function encodeSeedBase64(seed) {
+        // Encode to base64 - convert hex seed to string then to base64
+        var seedBits = sjcl.codec.hex.toBits(seed);
+        var seedString = sjcl.codec.utf8String.fromBits(seedBits);
+        var encoded = btoa(seedString);
+        // Convert base64 back to hex for compatibility with fromSeedHex
+        var decoded = atob(encoded);
+        var hex = '';
+        for (var i = 0; i < decoded.length; i++) {
+            hex += decoded.charCodeAt(i).toString(16).padStart(2, '0');
+        }
+        return hex;
+    }
+
+    function encodeSeedHex(seed) {
+        // Seed is already in hex format, just return it
+        return seed;
+    }
+
+    function encodeSeedReverseWords(seed) {
+        // Reverse the order of bytes in the seed
+        var bytes = seed.match(/.{1,2}/g) || [];
+        bytes.reverse();
+        return bytes.join('');
+    }
+
+
     function getEntropyTypeStr(entropy) {
         var typeStr = entropy.base.str;
         // Add some detail if these are cards

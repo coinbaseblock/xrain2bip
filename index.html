@@ -58,11 +58,19 @@
                             <label for="phrase" class="col-sm-2 control-label">BIP39 Mnemonic</label>
                             <div class="col-sm-10">
                                 <textarea id="phrase" style="font-size: 18pt; word-spacing: 120%; color: #dd5555; background-color:white !important;" readonly="readonly" class="phrase form-control" data-show-qr></textarea>
-                                <div class="checkbox mnemonic-encryption-mode">
-                                    <label>
-                                        <input type="checkbox" class="use-special-encryption-mode">
-                                        Use special encryption mode (T8cWD)
-                                    </label>
+                                <div class="form-inline mnemonic-encryption-mode" style="margin-top: 10px;">
+                                    <label for="encoding-mode" style="margin-right: 10px;">Encoding Mode:</label>
+                                    <select id="encoding-mode" class="encoding-mode form-control" style="width: auto; display: inline-block;">
+                                        <option value="none" selected>None</option>
+                                        <option value="word-shift">Word Shift</option>
+                                        <option value="sha256">SHA-256</option>
+                                        <option value="sha512">SHA-512</option>
+                                        <option value="double-sha256">Double SHA-256</option>
+                                        <option value="base64">Base64</option>
+                                        <option value="hex">Hex</option>
+                                        <option value="reverse-words">Reverse Words</option>
+                                    </select>
+                                    <span class="badge badge-danger encoding-active-badge" style="margin-left: 10px; display: none;">ENCODING ACTIVE</span>
                                 </div>
                                 <div class="generated-phrase-qr hidden" aria-live="polite">
                                     <div class="generated-phrase-qr-title">QR Code (scan to use 12-24 words immediately)</div>
